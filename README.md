@@ -1,5 +1,14 @@
 # Traefik with docker compose environment
 
+This project contains examples for a docker-compose configuration with traefik as proxy for the services.
+
+## Available Stacks
+* Grafana
+* Gitlab
+* Nextcloud
+* Sentry
+* Mailcow
+
 ## How to run
 To start a stack run following command in its directory
 ```docker-compose up```
