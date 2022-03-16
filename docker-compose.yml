@@ -1,0 +1,44 @@
+version: '2'
+
+services:
+  proxy:
+    image: traefik:1.7.30-alpine
+    networks:
+      - web
+    ports:
+      - "80:80"
+      - "8088:8080"
+      - "443:443"
+    volumes:
+      -  "./traefik.toml:/etc/traefik/traefik.toml"
+      -  "./acme:/etc/traefik/acme"
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    labels:
+      - "traefik.frontend.rule=Host:traefik.example.de"
+      - "traefik.port=8080"
+      - "traefik.backend=traefik"
+      - "traefik.frontend.entryPoints=http,https"
+
+#portainer:
+#  image: portainer/portainer
+#   networks:
+#     - web
+#   labels:
+#     - "traefik.frontend.rule=Host:portainer.example.de"
+#     - "traefik.port=9000"
+#     - "traefik.backend=portainer"
+#     - "traefik.frontend.entryPoints=http,https"
+#   volumes:
+#       - "portainer-data:/data"
+#       - "/var/run/docker.sock:/var/run/docker.sock"
+#   restart: unless-stopped
+# TODO ADD traefik labels
+
+volumes:
+  portainer-data:
+
+networks:
+  web:
+    external:
+      name: web
