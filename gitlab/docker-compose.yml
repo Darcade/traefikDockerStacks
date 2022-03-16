@@ -1,0 +1,113 @@
+version: '3'
+
+networks:
+  web:
+    external: true
+
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:14.7.3-ce.0
+    #image: gitlab/gitlab-ce:14.4.4-ce.0
+    #image: gitlab/gitlab-ce:13.12.10-ce.0
+    #image: gitlab/gitlab-ce:13.0.14-ce.0
+    #image: gitlab/gitlab-ce:latest
+    restart: always
+    hostname: lab.example.de
+    # I had problems with the health check. Sometimes it reported unhealthyness and therefore Traefik removed
+    # the container, so I turned it off. Maybe it works by now.
+    healthcheck:
+      disable: true
+    networks:
+      - web
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'https://lab.example.de'
+        nginx['listen_port'] = 80
+        nginx['listen_https'] = false
+        nginx['http2_enabled'] = false
+
+        nginx['proxy_set_headers'] = {
+          "Host" => "$$http_host",
+          "X-Real-IP" => "$$remote_addr",
+          "X-Forwarded-For" => "$$proxy_add_x_forwarded_for",
+          "X-Forwarded-Proto" => "https",
+          "X-Forwarded-Ssl" => "on"
+        }
+
+        gitlab_rails['gitlab_shell_ssh_port'] = 22
+
+        registry_external_url 'https://registry.lab.example.de'
+        registry_nginx['listen_port'] = 5100
+        registry_nginx['listen_https'] = false
+
+        registry_nginx['proxy_set_headers'] = {
+          "Host" => "$$http_host",
+          "X-Real-IP" => "$$remote_addr",
+          "X-Forwarded-For" => "$$proxy_add_x_forwarded_for",
+          "X-Forwarded-Proto" => "https",
+          "X-Forwarded-Ssl" => "on"
+        }
+
+        pages_external_url 'https://pages.example.de'
+        pages_nginx['listen_port'] = 5200
+        pages_nginx['listen_https'] = false
+        gitlab_pages['access_control'] = true
+
+        pages_nginx['proxy_set_headers'] = {
+          "Host" => "$$http_host",
+          "X-Real-IP" => "$$remote_addr",
+          "X-Forwarded-For" => "$$proxy_add_x_forwarded_for",
+          "X-Forwarded-Proto" => "https",
+          "X-Forwarded-Ssl" => "on"
+        }
+        gitlab_pages['internal_gitlab_server'] = "http://lab.example.de"
+        gitlab_pages['inplace_chroot'] = true
+        gitlab_pages['external_http'] = ['gitlab:5201']
+        gitlab_rails['smtp_enable'] = true
+        gitlab_rails['smtp_address'] = "mail.example.de"
+        gitlab_rails['smtp_port'] = 587
+        gitlab_rails['smtp_user_name'] = "lab@example.de"
+        gitlab_rails['smtp_password'] = "XXXXXXXXXXXXXXXX"
+        gitlab_rails['smtp_domain'] = "mail.example.de"
+        gitlab_rails['smtp_authentication'] = "login"
+        gitlab_rails['smtp_enable_starttls_auto'] = true
+        gitlab_rails['smtp_tls'] = false
+        gitlab_rails['smtp_openssl_verify_mode'] = 'none'
+
+        # # can change the 'From' with this setting.
+        #gitlab_rails['gitlab_email_from'] = 'lab@example.de'
+        #gitlab_rails['gitlab_email_reply_to'] = 'lab@example.de'
+    volumes:
+      - gitlab-config:/etc/gitlab
+      - gitlab-logs:/var/log/gitlab
+      - gitlab-data:/var/opt/gitlab
+    ports:
+      # Feel free to map this to a different port if that one is in use already
+      - "2022:22"
+    labels:
+      - traefik.enable=true
+      # Host settings for GitLab itself
+      - traefik.gitlab.frontend.rule=Host:lab.example.de
+      - traefik.gitlab.port=80
+      # Host settings for the registry
+      - traefik.registry.frontend.rule=Host:registry.lab.example.de
+      - traefik.registry.port=5100
+      # Host settings for GitLab pages. Since I don't have a wildcard certificate, I list every domain on it's own here
+      - traefik.pages.frontend.rule=Host:pages.example.de,example.pages.example.de,projects.pages.example.de
+      - traefik.pages.port=5201
+
+  gitlab-runner:
+    image: gitlab/gitlab-runner:alpine
+    restart: always
+    volumes:
+      # Mount Docker socket for dind
+      - /var/run/docker.sock:/var/run/docker.sock
+      # We need to slightly modify the runner config, so mount it here and just create an empty file for the beginning
+      # Make sure that the permissions are correct so that the container can write to it
+      - ./runner-config:/etc/gitlab-runner/
+
+volumes:
+  gitlab-config:
+  gitlab-logs:
+  gitlab-data:
+  gitlab-runner-data:

@@ -1,0 +1,2 @@
+#!/bin/bash
+docker run -v $PWD/vpn-data:/etc/openvpn -d -p 3000:1194/udp --cap-add=NET_ADMIN myownvpn

@@ -1,0 +1,54 @@
+# traefik.toml
+################################################################
+# Global configuration
+################################################################
+
+
+defaultEntryPoints = ["http", "https"]
+
+[entryPoints]
+  [entryPoints.http]
+  address = ":80"
+    [entryPoints.http.redirect]
+    entryPoint = "https"
+  [entryPoints.https]
+  address = ":443"
+    [entryPoints.https.tls]
+
+[acme]
+email = "example@example.de"
+storageFile = "/etc/traefik/acme/acme.json"
+entryPoint = "https"
+[acme.tlsChallenge]
+OnHostRule = true
+onDemand = true
+
+[[acme.domains]]
+  main = "example.de"
+  sans = ["sentry.example.de","portainer.example.de","mail.example.de", "cloud.example.de",  "lab.example.de", "registry.lab.example.de", "web.example.de"]
+#  sans = ["tresor.example.de","portainer.example.de", "traefik.example.de", "lab.example.de", "mail.example.de", "stats.example.de", ] 
+
+[[acme.domains]]
+  main = "test.example.de"
+
+[[acme.domains]]
+  main = "pages.example.de"
+  sans = ["example.pages.example.de", "projects.pages.example.de"]
+
+
+[[acme.domains]]
+  main = "other-domain.com"
+
+
+
+[web]
+address = ":8080"
+[web.auth.basic]
+  users = ["example:$XXXXXXXXXXXX"]
+
+[docker]
+endpoint = "unix:///var/run/docker.sock"
+domain = "example.de"
+watch = true
+exposedbydefault = true
+
